@@ -248,6 +248,12 @@ private:
 	{
 		return x[i][(int)(x[j][0].value)].value;
 	}
+	double kernel_cosine(int i, int j) const
+	{
+		double u_square = dot(x[i],x[i]);
+		double v_square = dot(x[j],x[j]);
+		return dot(x[i],x[j])/(sqrt(u_square)*sqrt(v_square));
+	}
 };
 
 Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
@@ -270,6 +276,9 @@ Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
 			break;
 		case PRECOMPUTED:
 			kernel_function = &Kernel::kernel_precomputed;
+			break;
+		case COSINE:
+			kernel_function = &Kernel::kernel_cosine;
 			break;
 	}
 
@@ -367,6 +376,8 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 			return tanh(param.gamma*dot(x,y)+param.coef0);
 		case PRECOMPUTED:  //x: test (validation), y: SV
 			return x[(int)(y->value)].value;
+		case COSINE:
+			return dot(x,y) / (sqrt(dot(x,x) * sqrt(dot(y,y))));
 		default:
 			return 0;  // Unreachable 
 	}
@@ -2641,7 +2652,7 @@ static const char *svm_type_table[] =
 
 static const char *kernel_type_table[]=
 {
-	"linear","polynomial","rbf","sigmoid","precomputed",NULL
+	"linear","polynomial","rbf","sigmoid","precomputed","cosine",NULL
 };
 
 int svm_save_model(const char *model_file_name, const svm_model *model)
@@ -3062,7 +3073,8 @@ const char *svm_check_parameter(const svm_problem *prob, const svm_parameter *pa
 	   kernel_type != POLY &&
 	   kernel_type != RBF &&
 	   kernel_type != SIGMOID &&
-	   kernel_type != PRECOMPUTED)
+	   kernel_type != PRECOMPUTED &&
+	   kernel_type != COSINE)
 		return "unknown kernel type";
 
 	if(param->gamma < 0)
